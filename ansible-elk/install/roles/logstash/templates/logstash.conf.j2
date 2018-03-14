@@ -1,0 +1,16 @@
+input {
+ file {
+ type => "nginx_access"
+ path => ["/var/log/nginx/**"]
+ exclude => ["*.gz”, “error.*"]
+ discover_interval => 10
+ }
+}
+
+
+output {
+elasticsearch { hosts => ["127.0.0.1:9200"]
+                index => "logstash-%{+YYYY.MM}"
+ }
+stdout { codec => rubydebug }
+}

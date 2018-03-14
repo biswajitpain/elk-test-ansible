@@ -1,0 +1,21 @@
+---
+# Default Ansible user
+# change this if you use a non-root user for running Ansible playbooks
+ansible_system_user: ubuntu
+### nginx ###
+nginx_kibana_port: 80
+# Kibana options
+# change this to affect nginx-wrapped htpasswd authentication
+kibana_user: admin
+kibana_password: admin
+
+### logging backend ###
+# logging_backend: fluentd
+logging_backend: logstash
+# external syslog traffic
+syslog_listen_external: false
+# we will set this to false by default
+logpath: /var/log/elasticsearch/
+datapath: /home/ubuntu/data
+es_local_port: 9200
+es_listen_external: true

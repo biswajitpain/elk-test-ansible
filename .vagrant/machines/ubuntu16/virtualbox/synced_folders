@@ -1,0 +1,1 @@
+{"virtualbox":{"/share":{"guestpath":"/share","hostpath":"/work/gdrive/pgdds","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"/Users/bpain/Desktop/plivo_test","disabled":false,"__vagrantfile":true}}}

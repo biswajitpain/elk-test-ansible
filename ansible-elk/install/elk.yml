@@ -1,0 +1,15 @@
+---
+#
+# Playbook to install the ELK stack
+#
+
+- hosts: elk
+  remote_user: "{{ ansible_system_user }}"
+  vars_files:
+    - group_vars/all.yml
+  roles:
+    - { role: elasticsearch }
+    - { role: logstash, when: ((logging_backend is none) or (logging_backend == 'logstash')) }
+    - { role: nginx }
+    - { role: kibana }
+    - { role: instructions }

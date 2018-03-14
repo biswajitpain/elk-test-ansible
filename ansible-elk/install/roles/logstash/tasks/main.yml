@@ -1,0 +1,26 @@
+---
+#
+# Install/run logstash
+#
+- name: Download logstash latest
+  get_url:
+    url: https://artifacts.elastic.co/downloads/logstash/logstash-6.2.2.deb
+    dest: /tmp/logstash.deb
+
+
+- name: Install logstash debian
+  apt: deb="/tmp/logstash.deb"
+  become: true
+
+- name: Copy logstash filter configuration
+  template:
+    src=logstash.conf.j2
+    dest=/etc/logstash/conf.d/logstash.conf
+    owner=logstash
+    group=logstash
+    mode=0644
+  become: true
+
+- name: Setup logstash  service to autostart
+  service: name=logstash state=started enabled=true
+  become: true

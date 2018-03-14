@@ -1,0 +1,101 @@
+---
+#
+# Install/run kibana
+#
+# Note a lot of logstash/ES activity happens here too
+# Because of service ordering.
+
+- name: Download kobana
+  get_url: 
+    url=https://artifacts.elastic.co/downloads/kibana/kibana-6.2.2-amd64.deb
+    dest="/tmp/kibana.deb"
+
+
+- name: Install kibana  debians
+  apt: deb="/tmp/kibana.deb"
+  become: true
+
+- name: Check kibana users
+  stat: path=/etc/nginx/htpasswd.users
+  ignore_errors: true
+  register: kibana_user_pwfile_exists
+  become: true
+
+- name: Create kibana admin user
+  command: htpasswd -b -c /etc/nginx/htpasswd.users {{kibana_user}} {{kibana_password}}
+  ignore_errors: true
+  when: kibana_user_pwfile_exists != 0
+  become: true
+
+- name: Setup kibana service
+  service: name=kibana state=started enabled=true
+  become: true
+
+- name: Enable logstash service
+  service: name=logstash state=started enabled=true
+  become: true
+  when: (logging_backend != 'fluentd')
+
+- name: Wait for elasticsearch index to be available
+  uri:
+    url: http://localhost:9200/_cat/indices
+    status_code: 200
+  register: es_service_result
+  until: es_service_result.status == 200
+  retries: 50
+  delay: 10
+  when: not install_elasticsearch_xpack
+  become: true
+
+
+# We need to insert data to create an initial index, query if it exists
+- name: Check elasticsearch index for content
+  uri:
+    url=http://localhost:9200/_cat/indices
+    method=GET
+    return_content=yes
+  register: elasticsearch_index
+  when: not install_elasticsearch_xpack
+  become: true
+
+- name: Check for TCP/{{ logstash_localsyslog_port }} logstash internal listener port, this may take a while
+  wait_for:
+    host: localhost
+    port: '{{ logstash_localsyslog_port }}'
+    delay: 10
+    connect_timeout: 5
+    timeout: 420
+    state: started
+  when: (logging_backend != 'fluentd')
+  become: true
+
+# leaving this set to 7minutes before giving up
+- name: Check for TCP/{{ logstash_syslog_port }} logstash external listener port, this may take a while
+  wait_for:
+    host: localhost
+    port: '{{ logstash_syslog_port }}'
+    delay: 10
+    connect_timeout: 5
+    timeout: 420
+    state: started
+  when: (logging_backend != 'fluentd')
+  become: true
+
+# Populate elasticsearch with local syslog data
+- name: Populate elasticsearch index with local syslog data
+  lineinfile: dest=/etc/rsyslog.conf \
+          line="*.* @localhost:{{ logstash_localsyslog_port }}"
+  when: (logging_backend != 'fluentd')
+  register: rsyslog_updated
+  become: true
+
+- name: Restart rsyslogd to populate elasticsearch index
+  command: systemctl restart rsyslog.service
+  ignore_errors: true
+  when: rsyslog_updated != 0
+  become: true
+
+- name: Refresh fluentd service
+  command: systemctl restart td-agent.service
+  when: (logging_backend == 'fluentd')
+  become: true
